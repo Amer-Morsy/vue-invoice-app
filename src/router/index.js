@@ -4,8 +4,13 @@ import HomeView from "../views/HomeView.vue";
 const routes = [
   {
     path: "/",
-    name: "home",
+    name: "Home",
     component: HomeView,
+  },
+  {
+    path: "/invoice/:invoiceId",
+    name: "Invoice",
+    component: () => import("../views/invoiceView.vue"),
   },
 ];
 
