@@ -1,3 +1,21 @@
+<script setup>
+import { useStore } from "vuex";
+import { computed } from "vue";
+
+const store = useStore();
+const editInvoice = computed(() => store.state.editInvoice);
+
+const closeModal = () => {
+  store.commit("TOGGLE_MODAL");
+};
+const closeInvoice = () => {
+  store.commit("TOGGLE_MODAL");
+  store.commit("TOGGLE_INVOICE");
+  if (editInvoice.value) {
+    store.commit("TOGGLE_EDIT_INVOICE");
+  }
+};
+</script>
 <template>
   <div class="modal flex">
     <div class="modal-content">
@@ -9,29 +27,6 @@
     </div>
   </div>
 </template>
-
-<script>
-import { mapState, mapMutations } from "vuex";
-export default {
-  name: "modalComponent",
-  computed: {
-    ...mapState(["editInvoice"]),
-  },
-  methods: {
-    ...mapMutations(["TOGGLE_MODAL", "TOGGLE_INVOICE", "TOGGLE_EDIT_INVOICE"]),
-    closeModal() {
-      this.TOGGLE_MODAL();
-    },
-    closeInvoice() {
-      this.TOGGLE_MODAL();
-      this.TOGGLE_INVOICE();
-      if (this.editInvoice) {
-        this.TOGGLE_EDIT_INVOICE();
-      }
-    },
-  },
-};
-</script>
 
 <style lang="scss" scoped>
 .modal {

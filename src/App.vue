@@ -1,3 +1,32 @@
+<script setup>
+import Navigation from "./components/NavigationComp.vue";
+import InvoiceModal from "./components/InvoiceModal.vue";
+import Modal from "./components/ModalComp.vue";
+import { computed, ref } from "vue";
+import { useStore } from "vuex";
+// DATA
+const mobile = ref(null);
+const store = useStore();
+const invoicesLoaded = computed(() => store.state.invoicesLoaded);
+const modalActive = computed(() => store.state.modalActive);
+const invoiceModal = computed(() => store.state.invoiceModal);
+// METHODS
+const getInvoices = () => store.dispatch("GET_INVOICES");
+const checkMobile = () => {
+  const windowWidth = window.innerWidth;
+  if (windowWidth <= 750) {
+    mobile.value = true;
+    return;
+  }
+  mobile.value = false;
+  return;
+};
+// LIFECYCLE
+window.addEventListener("resize", checkMobile);
+checkMobile();
+getInvoices();
+</script>
+
 <template>
   <div v-if="invoicesLoaded">
     <div v-if="!mobile" class="app flex flex-column">
@@ -16,46 +45,6 @@
     </div>
   </div>
 </template>
-
-<script>
-import { mapActions, mapState } from "vuex";
-import InvoiceModal from "./components/InvoiceModal.vue";
-import Modal from "./components/ModalComp.vue";
-import Navigation from "./components/NavigationComp.vue";
-
-export default {
-  name: "App",
-  components: {
-    Navigation,
-    Modal,
-    InvoiceModal,
-  },
-  data() {
-    return {
-      mobile: null,
-    };
-  },
-  computed: {
-    ...mapState(["invoicesLoaded", "modalActive", "invoiceModal"]),
-  },
-  methods: {
-    ...mapActions(["GET_INVOICES"]),
-    checkScreen() {
-      const windowWidth = window.innerWidth;
-      if (windowWidth <= 750) {
-        this.mobile = true;
-        return;
-      }
-      this.mobile = false;
-    },
-  },
-  created() {
-    this.GET_INVOICES();
-    this.checkScreen();
-    window.addEventListener("resize", this.checkScreen);
-  },
-};
-</script>
 
 <style lang="scss">
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap");

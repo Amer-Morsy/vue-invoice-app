@@ -1,3 +1,48 @@
+<script setup>
+import { useStore } from "vuex";
+import { computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
+const store = useStore();
+const route = useRoute();
+const router = useRouter();
+const currentInvoiceArray = computed(() => store.state.currentInvoiceArray);
+const editInvoice = computed(() => store.state.editInvoice);
+const currentInvoice = ref(null);
+
+const getCurrentInvoice = () => {
+  store.commit("SET_CURRENT_INVOICE", route.params.invoiceId);
+  currentInvoice.value = currentInvoiceArray.value[0];
+};
+
+const toggleEditInvoice = () => {
+  store.commit("TOGGLE_EDIT_INVOICE");
+  store.commit("TOGGLE_INVOICE");
+};
+
+const deleteInvoice = async (docId) => {
+  await store.dispatch("DELETE_INVOICE", docId);
+  router.push({ name: "Home" });
+};
+const updateStatusToPending = (docId) => {
+  store.dispatch("UPDATE_STATUS_TO_PENDING", docId);
+};
+const updateStatusToPaid = (docId) => {
+  store.dispatch("UPDATE_STATUS_TO_PAID", docId);
+};
+
+getCurrentInvoice();
+
+watch(
+  () => editInvoice.value,
+  () => {
+    if (!editInvoice.value) {
+      getCurrentInvoice();
+    }
+  }
+);
+</script>
+
 <template>
   <div v-if="currentInvoice" class="invoice-view container">
     <router-link class="nav-link flex" :to="{ name: 'Home' }">
@@ -102,67 +147,6 @@
     </div>
   </div>
 </template>
-
-<script>
-import { mapActions, mapMutations, mapState } from "vuex";
-
-export default {
-  name: "invoiceView",
-  computed: {
-    ...mapState(["currentInvoiceArray", "editInvoice"]),
-  },
-  data() {
-    return {
-      currentInvoice: null,
-    };
-  },
-  methods: {
-    ...mapMutations([
-      "SET_CURRENT_INVOICE",
-      "TOGGLE_EDIT_INVOICE",
-      "TOGGLE_INVOICE",
-    ]),
-    ...mapActions([
-      "DELETE_INVOICE",
-      "UPDATE_STATUS_TO_PENDING",
-      "UPDATE_STATUS_TO_PAID",
-    ]),
-
-    getCurrentInvoice() {
-      this.SET_CURRENT_INVOICE(this.$route.params.invoiceId);
-      this.currentInvoice = this.currentInvoiceArray[0];
-    },
-
-    toggleEditInvoice() {
-      this.TOGGLE_EDIT_INVOICE();
-      this.TOGGLE_INVOICE();
-    },
-
-    async deleteInvoice(docId) {
-      await this.DELETE_INVOICE(docId);
-      this.$router.push({ name: "Home" });
-    },
-
-    updateStatusToPaid(docId) {
-      this.UPDATE_STATUS_TO_PAID(docId);
-    },
-
-    updateStatusToPending(docId) {
-      this.UPDATE_STATUS_TO_PENDING(docId);
-    },
-  },
-  created() {
-    this.getCurrentInvoice();
-  },
-  watch: {
-    editInvoice() {
-      if (!this.editInvoice) {
-        this.currentInvoice = this.currentInvoiceArray[0];
-      }
-    },
-  },
-};
-</script>
 
 <style lang="scss" scoped>
 .invoice-view {

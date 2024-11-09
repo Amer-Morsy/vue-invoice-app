@@ -1,10 +1,217 @@
+<script setup>
+import db from "../firebase/firebaseInit";
+import LoadingComp from "./LoadingComp.vue";
+import { useStore } from "vuex";
+import { uid } from "uid";
+import { computed, ref, watch, onMounted } from "vue";
+import { useRoute } from "vue-router";
+// DATA
+const store = useStore();
+const editInvoice = computed(() => store.state.editInvoice);
+const currentInvoiceArray = computed(() => store.state.currentInvoiceArray);
+const dateOptions = ref({ year: "numeric", month: "short", day: "numeric" });
+const docId = ref(null);
+const loading = ref(null);
+const billerStreetAddress = ref(null);
+const billerCity = ref(null);
+const billerZipCode = ref(null);
+const billerCountry = ref(null);
+const clientName = ref(null);
+const clientEmail = ref(null);
+const clientStreetAddress = ref(null);
+const clientCity = ref(null);
+const clientZipCode = ref(null);
+const clientCountry = ref(null);
+const invoiceDateUnix = ref(null);
+const invoiceDate = ref(null);
+const paymentTerms = ref(null);
+const paymentDueDateUnix = ref(null);
+const paymentDueDate = ref(null);
+const productDescription = ref(null);
+const invoicePending = ref(null);
+const invoiceDraft = ref(null);
+const invoiceItemList = ref([]);
+const invoiceTotal = ref(0);
+const invoiceWrap = ref(null);
+const route = useRoute();
+// WATCHERS
+watch(paymentTerms, () => {
+  const futureDate = new Date();
+  paymentDueDateUnix.value = futureDate.setDate(
+    futureDate.getDate() + parseInt(paymentTerms.value)
+  );
+  paymentDueDate.value = new Date(paymentDueDateUnix.value).toLocaleDateString(
+    "en-us",
+    dateOptions.value
+  );
+});
+// METHODS
+const checkClick = (e) => {
+  if (e.target === invoiceWrap.value) {
+    store.commit("TOGGLE_MODAL");
+  }
+};
+
+const closeInvoice = () => {
+  // store.commit("TOGGLE_MODAL");
+  store.commit("TOGGLE_INVOICE");
+  if (editInvoice.value) {
+    store.commit("TOGGLE_EDIT_INVOICE");
+  }
+};
+
+const addNewInvoiceItem = () => {
+  invoiceItemList.value.push({
+    id: uid(),
+    name: "",
+    quantity: 0,
+    price: 0,
+    total: 0,
+  });
+};
+
+const deleteInvoiceItem = (id) => {
+  invoiceItemList.value = invoiceItemList.value.filter(
+    (item) => item.id !== id
+  );
+};
+
+const calInvoiceTotal = () => {
+  invoiceTotal.value = 0;
+  invoiceItemList.value.forEach((item) => {
+    invoiceTotal.value += item.total;
+  });
+};
+const publishInvoice = () => {
+  invoicePending.value = true;
+};
+const saveDraft = () => {
+  invoiceDraft.value = true;
+};
+
+const uploadInvoice = async () => {
+  if (invoiceItemList.value.length <= 0) {
+    alert("Please ensure you have filled out work items!");
+    return;
+  }
+  loading.value = true;
+  calInvoiceTotal();
+  const dataBase = db.collection("invoices").doc();
+  await dataBase.set({
+    invoiceId: uid(6),
+    billerStreetAddress: billerStreetAddress.value,
+    billerCity: billerCity.value,
+    billerZipCode: billerZipCode.value,
+    billerCountry: billerCountry.value,
+    clientName: clientName.value,
+    clientEmail: clientEmail.value,
+    clientStreetAddress: clientStreetAddress.value,
+    clientCity: clientCity.value,
+    clientZipCode: clientZipCode.value,
+    clientCountry: clientCountry.value,
+    invoiceDate: invoiceDate.value,
+    invoiceDateUnix: invoiceDateUnix.value,
+    paymentTerms: paymentTerms.value,
+    paymentDueDate: paymentDueDate.value,
+    paymentDueDateUnix: paymentDueDateUnix.value,
+    productDescription: productDescription.value,
+    invoiceItemList: invoiceItemList.value,
+    invoiceTotal: invoiceTotal.value,
+    invoicePending: invoicePending.value,
+    invoiceDraft: invoiceDraft.value,
+    invoicePaid: null,
+  });
+  loading.value = false;
+  store.commit("TOGGLE_INVOICE");
+  store.dispatch("GET_INVOICES");
+};
+
+const updateInvoice = async () => {
+  if (invoiceItemList.value.length <= 0) {
+    alert("Please ensure you have filled out work items!");
+    return;
+  }
+  loading.value = true;
+  calInvoiceTotal();
+  const dataBase = db.collection("invoices").doc(docId.value);
+  await dataBase.update({
+    billerStreetAddress: billerStreetAddress.value,
+    billerCity: billerCity.value,
+    billerZipCode: billerZipCode.value,
+    billerCountry: billerCountry.value,
+    clientName: clientName.value,
+    clientStreetAddress: clientStreetAddress.value,
+    clientCity: clientCity.value,
+    clientZipCode: clientZipCode.value,
+    clientCountry: clientCountry.value,
+    invoiceDate: invoiceDate.value,
+    invoiceDateUnix: invoiceDateUnix.value,
+    paymentTerms: paymentTerms.value,
+    paymentDueDate: paymentDueDate.value,
+    paymentDueDateUnix: paymentDueDateUnix.value,
+    productDescription: productDescription.value,
+    invoiceItemList: invoiceItemList.value,
+    invoiceTotal: invoiceTotal.value,
+  });
+  loading.value = false;
+  const data = {
+    docId: docId.value,
+    routeId: route.params.id,
+  };
+
+  store.dispatch("UPDATE_INVOICE", data);
+};
+
+const submitForm = () => {
+  if (editInvoice.value) {
+    updateInvoice();
+    return;
+  }
+  uploadInvoice();
+};
+
+// LIFECYCLE
+onMounted(() => {
+  if (!editInvoice.value) {
+    invoiceDateUnix.value = Date.now();
+    invoiceDate.value = new Date(invoiceDateUnix.value).toLocaleDateString(
+      "en-us",
+      dateOptions.value
+    );
+  } else {
+    const currentInvoice = currentInvoiceArray.value[0];
+    docId.value = currentInvoice.docId;
+    billerStreetAddress.value = currentInvoice.billerStreetAddress;
+    billerCity.value = currentInvoice.billerCity;
+    billerZipCode.value = currentInvoice.billerZipCode;
+    billerCountry.value = currentInvoice.billerCountry;
+    clientName.value = currentInvoice.clientName;
+    clientEmail.value = currentInvoice.clientEmail;
+    clientStreetAddress.value = currentInvoice.clientStreetAddress;
+    clientCity.value = currentInvoice.clientCity;
+    clientZipCode.value = currentInvoice.clientZipCode;
+    clientCountry.value = currentInvoice.clientCountry;
+    invoiceDate.value = currentInvoice.invoiceDate;
+    invoiceDateUnix.value = currentInvoice.invoiceDateUnix;
+    paymentTerms.value = currentInvoice.paymentTerms;
+    paymentDueDate.value = currentInvoice.paymentDueDate;
+    paymentDueDateUnix.value = currentInvoice.paymentDueDateUnix;
+    productDescription.value = currentInvoice.productDescription;
+    invoiceItemList.value = currentInvoice.invoiceItemList;
+    invoiceTotal.value = currentInvoice.invoiceTotal;
+    invoicePending.value = currentInvoice.invoicePending;
+    invoiceDraft.value = currentInvoice.invoiceDraft;
+  }
+});
+</script>
+
 <template>
   <div
     @click="checkClick"
     ref="invoiceWrap"
     class="invoice-wrap flex flex-column"
   >
-    <form @submit.prevent="submitForm" class="invoice-content">
+    <form @submit.prevent="submitForm()" class="invoice-content">
       <LoadingComp v-show="loading" />
       <h1 v-if="!editInvoice">New Invoice</h1>
       <h1 v-else>Edit Invoice</h1>
@@ -200,212 +407,6 @@
     </form>
   </div>
 </template>
-
-<script>
-import db from "../firebase/firebaseInit";
-import LoadingComp from "./LoadingComp.vue";
-import { mapState, mapMutations, mapActions } from "vuex";
-import { uid } from "uid";
-
-export default {
-  name: "invoiceModal",
-  components: {
-    LoadingComp,
-  },
-  computed: {
-    ...mapState(["editInvoice", "currentInvoiceArray"]),
-  },
-  data() {
-    return {
-      dateOptions: { year: "numeric", month: "short", day: "numeric" },
-      docId: null,
-      loading: null,
-      billerStreetAddress: null,
-      billerCity: null,
-      billerZipCode: null,
-      billerCountry: null,
-      clientName: null,
-      clientEmail: null,
-      clientStreetAddress: null,
-      clientCity: null,
-      clientZipCode: null,
-      clientCountry: null,
-      invoiceDateUnix: null,
-      invoiceDate: null,
-      paymentTerms: null,
-      paymentDueDateUnix: null,
-      paymentDueDate: null,
-      productDescription: null,
-      invoicePending: null,
-      invoiceDraft: null,
-      invoiceItemList: [],
-      invoiceTotal: 0,
-    };
-  },
-  methods: {
-    ...mapMutations(["TOGGLE_INVOICE", "TOGGLE_MODAL", "TOGGLE_EDIT_INVOICE"]),
-    ...mapActions(["UPDATE_INVOICE", "GET_INVOICES"]),
-    checkClick(e) {
-      if (e.target === this.$refs.invoiceWrap) {
-        this.TOGGLE_MODAL();
-      }
-    },
-    closeInvoice() {
-      this.TOGGLE_INVOICE();
-      if (this.editInvoice) {
-        this.TOGGLE_EDIT_INVOICE();
-      }
-    },
-    addNewInvoiceItem() {
-      this.invoiceItemList.push({
-        id: uid(),
-        itemName: "",
-        qty: "",
-        price: 0,
-        total: 0,
-      });
-    },
-    deleteInvoiceItem(id) {
-      this.invoiceItemList = this.invoiceItemList.filter(
-        (item) => item.id !== id
-      );
-    },
-    calInvoiceTotal() {
-      this.invoiceTotal = 0;
-      this.invoiceItemList.forEach((item) => {
-        this.invoiceTotal += item.total;
-      });
-    },
-    publishInvoice() {
-      this.invoicePending = true;
-    },
-    saveDraft() {
-      this.invoiceDraft = true;
-    },
-    async uploadInvice() {
-      if (this.invoiceItemList.length <= 0) {
-        alert("please ensure you filled out work items!");
-        return;
-      }
-      this.loading = true;
-      this.calInvoiceTotal();
-      const database = db.collection("invoices").doc();
-
-      await database.set({
-        invoiceId: uid(6),
-        billerStreetAddress: this.billerStreetAddress,
-        billerCity: this.billerCity,
-        billerZipCode: this.billerZipCode,
-        billerCountry: this.billerCountry,
-        clientName: this.clientName,
-        clientEmail: this.clientEmail,
-        clientStreetAddress: this.clientStreetAddress,
-        clientCity: this.clientCity,
-        clientZipCode: this.clientZipCode,
-        clientCountry: this.clientCountry,
-        invoiceDate: this.invoiceDate,
-        invoiceDateUnix: this.invoiceDateUnix,
-        paymentTerms: this.paymentTerms,
-        paymentDueDate: this.paymentDueDate,
-        paymentDueDateUnix: this.paymentDueDateUnix,
-        productDescription: this.productDescription,
-        invoiceItemList: this.invoiceItemList,
-        invoiceTotal: this.invoiceTotal,
-        invoicePending: this.invoicePending,
-        invoiceDraft: this.invoiceDraft,
-        invoicePaid: null,
-      });
-      this.loading = false;
-      this.TOGGLE_INVOICE();
-      this.GET_INVOICES();
-    },
-    async updateInvoice() {
-      if (this.invoiceItemList.length <= 0) {
-        alert("please ensure you filled out work items!");
-        return;
-      }
-      this.loading = true;
-      this.calInvoiceTotal();
-      const dataBase = db.collection("invoices").doc(this.docId);
-      await dataBase.update({
-        billerStreetAddress: this.billerStreetAddress,
-        billerCity: this.billerCity,
-        billerZipCode: this.billerZipCode,
-        billerCountry: this.billerCountry,
-        clientName: this.clientName,
-        clientEmail: this.clientEmail,
-        clientStreetAddress: this.clientStreetAddress,
-        clientCity: this.clientCity,
-        clientZipCode: this.clientZipCode,
-        clientCountry: this.clientCountry,
-        paymentTerms: this.paymentTerms,
-        paymentDueDate: this.paymentDueDate,
-        paymentDueDateUnix: this.paymentDueDateUnix,
-        productDescription: this.productDescription,
-        invoiceItemList: this.invoiceItemList,
-        invoiceTotal: this.invoiceTotal,
-      });
-      this.loading = false;
-      const data = {
-        docId: this.docId,
-        routeId: this.$route.params.invoiceId,
-      };
-      this.UPDATE_INVOICE(data);
-    },
-    submitForm() {
-      if (this.editInvoice) {
-        this.updateInvoice();
-        return;
-      }
-      this.uploadInvice();
-    },
-  },
-  watch: {
-    paymentTerms() {
-      const futureDate = new Date();
-      this.paymentDueDateUnix = futureDate.setDate(
-        futureDate.getDate() + parseInt(this.paymentTerms)
-      );
-      this.paymentDueDate = new Date(
-        this.paymentDueDateUnix
-      ).toLocaleDateString("en-us", this.dateOptions);
-    },
-  },
-  created() {
-    if (!this.editInvoice) {
-      this.invoiceDateUnix = Date.now();
-      this.invoiceDate = new Date(this.invoiceDateUnix).toLocaleDateString(
-        "en-us",
-        this.dateOptions
-      );
-    }
-    if (this.editInvoice) {
-      const currentInvoice = this.currentInvoiceArray[0];
-      this.docId = currentInvoice.docId;
-      this.billerStreetAddress = currentInvoice.billerStreetAddress;
-      this.billerCity = currentInvoice.billerCity;
-      this.billerZipCode = currentInvoice.billerZipCode;
-      this.billerCountry = currentInvoice.billerCountry;
-      this.clientName = currentInvoice.clientName;
-      this.clientEmail = currentInvoice.clientEmail;
-      this.clientStreetAddress = currentInvoice.clientStreetAddress;
-      this.clientCity = currentInvoice.clientCity;
-      this.clientZipCode = currentInvoice.clientZipCode;
-      this.clientCountry = currentInvoice.clientCountry;
-      this.invoiceDateUnix = currentInvoice.invoiceDateUnix;
-      this.invoiceDate = currentInvoice.invoiceDate;
-      this.paymentTerms = currentInvoice.paymentTerms;
-      this.paymentDueDateUnix = currentInvoice.paymentDueDateUnix;
-      this.paymentDueDate = currentInvoice.paymentDueDate;
-      this.productDescription = currentInvoice.productDescription;
-      this.invoicePending = currentInvoice.invoicePending;
-      this.invoiceDraft = currentInvoice.invoiceDraft;
-      this.invoiceItemList = currentInvoice.invoiceItemList;
-      this.invoiceTotal = currentInvoice.invoiceTotal;
-    }
-  },
-};
-</script>
 
 <style lang="scss" scoped>
 .invoice-wrap {

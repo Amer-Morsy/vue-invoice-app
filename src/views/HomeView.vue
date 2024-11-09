@@ -1,10 +1,49 @@
+<script setup>
+import InvoiceComp from "../components/InvoiceComp.vue";
+import { useStore } from "vuex";
+import { computed, ref } from "vue";
+
+const store = useStore();
+const filteredInvoice = ref(null);
+const filterMenu = ref(null);
+
+const invoiceData = computed(() => store.state.invoiceData);
+const filteredData = computed(() => {
+  return invoiceData.value.filter((invoice) => {
+    if (filteredInvoice.value === "Draft") {
+      return invoice.invoiceDraft == true;
+    }
+    if (filteredInvoice.value === "Pending") {
+      return invoice.invoicePending === true;
+    }
+    if (filteredInvoice.value === "Paid") {
+      return invoice.invoicePaid === true;
+    }
+    return invoice;
+  });
+});
+const newInvoice = () => {
+  store.commit("TOGGLE_INVOICE");
+};
+const toggleFilterMenu = () => {
+  filterMenu.value = !filterMenu.value;
+};
+const filteredInvoices = (e) => {
+  if (e.target.innerText === "Clear Filter") {
+    filteredInvoice.value = null;
+    return;
+  }
+  filteredInvoice.value = e.target.innerText;
+};
+</script>
+
 <template>
   <div class="home container">
     <!-- Header -->
     <div class="header flex">
       <div class="left flex flex-column">
         <h1>Invoices</h1>
-        <span>There are {{ invoiceData.length }} total invoices</span>
+        <span>There are {{ filteredData.length }} total invoices</span>
       </div>
       <div class="right flex">
         <div @click="toggleFilterMenu" class="filter flex">
@@ -44,58 +83,6 @@
     </div>
   </div>
 </template>
-
-<script>
-import { mapState, mapMutations } from "vuex";
-import invoiceComp from "../components/InvoiceComp.vue";
-export default {
-  name: "HomeView",
-  components: {
-    invoiceComp,
-  },
-  computed: {
-    ...mapState(["invoiceData"]),
-
-    filteredData() {
-      return this.invoiceData.filter((invoice) => {
-        if (this.filteredInvoice === "Draft") {
-          return invoice.invoiceDraft == true;
-        }
-        if (this.filteredInvoice === "Pending") {
-          return invoice.invoicePending == true;
-        }
-        if (this.filteredInvoice === "Paid") {
-          return invoice.invoicePaid == true;
-        }
-        return invoice;
-      });
-    },
-  },
-  data() {
-    return {
-      filterMenu: null,
-      filteredInvoice: null,
-    };
-  },
-
-  methods: {
-    ...mapMutations(["TOGGLE_INVOICE"]),
-    newInvoice() {
-      this.TOGGLE_INVOICE();
-    },
-    toggleFilterMenu() {
-      this.filterMenu = !this.filterMenu;
-    },
-    filteredInvoices(e) {
-      if (e.target.innerText === "Clear Filter") {
-        this.filteredInvoice = null;
-        return;
-      }
-      this.filteredInvoice = e.target.innerText;
-    },
-  },
-};
-</script>
 
 <style lang="scss" scoped>
 .home {

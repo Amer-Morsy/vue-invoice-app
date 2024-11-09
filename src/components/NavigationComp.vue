@@ -1,3 +1,5 @@
+<script setup></script>
+
 <template>
   <header class="flex">
     <div class="branding flex">
@@ -5,12 +7,6 @@
     </div>
   </header>
 </template>
-
-<script>
-export default {
-  name: "navigationComponent",
-};
-</script>
 
 <style lang="scss" scoped>
 header {
